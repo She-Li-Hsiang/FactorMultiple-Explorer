@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>因數倍數互動教室 - 測驗優化版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        
+        .factor-arc { fill: none; stroke-width: 6; stroke-linecap: round; transition: all 0.5s ease; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+        .tab-btn { position: relative; transition: all 0.3s; }
+        .tab-btn.active { color: #4f46e5; font-weight: 900; }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #4f46e5; border-radius: 2px; }
+        .multiple-dot { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: bold; transition: all 0.3s; }
+        .hidden-section { display: none; }
+        .cell { width: 16px; height: 16px; border-radius: 3px; }
+        
+        /* 測驗空格樣式 */
+        .quiz-input-box {
+            width: 60px; height: 50px; border-bottom: 3px solid #e5e7eb;
+            text-align: center; font-size: 1.5rem; font-weight: bold;
+            outline: none; transition: border-color 0.3s; margin: 5px;
+        }
+        .quiz-input-box:focus { border-bottom-color: #4f46e5; background-color: #f5f3ff; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 flex flex-wrap gap-8">
+            <button onclick="switchMode('factor')" id="tab-factor" class="tab-btn active py-5 text-lg text-gray-400">📊 自我學習(因數)</button>
+            <button onclick="switchMode('multiple')" id="tab-multiple" class="tab-btn py-5 text-lg text-gray-400">🏃 自我學習(公倍數)</button>
+            <button onclick="switchMode('quiz')" id="tab-quiz" class="tab-btn py-5 text-lg text-gray-400">📝 測驗挑戰</button>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-10">
+        <div id="section-factor" class="space-y-10">
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex items-end gap-6">
+                <div class="flex-1">
+                    <label class="block text-sm font-bold text-gray-500 mb-2">輸入數字 A</label>
+                    <input type="number" id="inputA" value="12" class="w-full border-2 border-indigo-50 rounded-2xl px-5 py-3 text-xl font-bold focus:border-indigo-500 outline-none transition-all">
+                </div>
+                <button onclick="updateFactorVisuals()" class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100">更新因數圖表</button>
+            </div>
+            <section class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                <div id="factorMatrixGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            </section>
+            <section class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                <div class="bg-slate-50 rounded-3xl p-10 overflow-hidden">
+                    <svg id="rainbowSvg" viewBox="0 0 800 350" class="w-full h-auto"></svg>
+                    <div id="rainbowLabels" class="flex justify-between w-full px-12 mt-4"></div>
+                </div>
+            </section>
+        </div>
+
+        <div id="section-multiple" class="hidden-section space-y-10">
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-wrap items-end gap-6">
+                <div class="w-40"><input type="number" id="mNumA" value="12" class="w-full border-2 border-blue-50 rounded-2xl px-5 py-3 text-xl font-bold"></div>
+                <div class="w-40"><input type="number" id="mNumB" value="8" class="w-full border-2 border-rose-50 rounded-2xl px-5 py-3 text-xl font-bold"></div>
+                <button onclick="updateMultipleVisuals()" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold">生成倍數賽道</button>
+            </div>
+            <div id="track1" class="bg-white p-8 rounded-3xl mb-4"></div>
+            <div id="track2" class="bg-white p-8 rounded-3xl"></div>
+        </div>
+
+        <div id="section-quiz" class="hidden-section space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <button onclick="startQuiz('factor')" class="p-8 bg-indigo-500 text-white rounded-3xl shadow-xl hover:bg-indigo-600 transition-all">
+                    <h4 class="text-2xl font-black mb-2">因數挑戰</h4>
+                </button>
+                <button onclick="startQuiz('commonFactor')" class="p-8 bg-emerald-500 text-white rounded-3xl shadow-xl hover:bg-emerald-600 transition-all">
+                    <h4 class="text-2xl font-black mb-2">公因數挑戰</h4>
+                </button>
+                <button onclick="startQuiz('lcm')" class="p-8 bg-amber-500 text-white rounded-3xl shadow-xl hover:bg-amber-600 transition-all">
+                    <h4 class="text-2xl font-black mb-2">LCM 挑戰</h4>
+                </button>
+            </div>
+
+            <div id="quizPanel" class="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-indigo-50 text-center hidden-section">
+                <div id="quizProgress" class="text-indigo-400 font-black mb-4 uppercase tracking-widest">Question 1 / 10</div>
+                <div id="quizQuestion" class="text-4xl font-black text-gray-800 mb-10"></div>
+                
+                <div id="inputContainer" class="flex flex-wrap justify-center gap-4 mb-10"></div>
+                
+                <button onclick="checkAnswer()" class="bg-gray-900 text-white px-16 py-4 rounded-2xl font-black text-xl hover:bg-black transition-all">確認答案</button>
+                <p class="text-gray-400 mt-6 text-sm">💡 提示：順序不限，填完一個按空格或 Tab 可切換下一格</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="jokeModal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-[3rem] p-10 max-w-sm w-full text-center space-y-6 shadow-2xl">
+            <div class="text-6xl">🎉</div>
+            <h3 class="text-2xl font-black">挑戰成功！</h3>
+            <p id="jokeText" class="text-gray-600 italic bg-gray-50 p-6 rounded-2xl"></p>
+            <button onclick="location.reload()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        const getFactors = n => {
+            let f = []; for(let i=1; i<=n; i++) if(n%i===0) f.push(i); return f;
+        };
+        const getLCM = (a, b) => {
+            const gcd = (x, y) => y === 0 ? x : gcd(y, x%y);
+            return (a * b) / gcd(a, b);
+        };
+
+        function switchMode(mode) {
+            ['factor', 'multiple', 'quiz'].forEach(s => {
+                document.getElementById(`section-${s}`).classList.toggle('hidden-section', s !== mode);
+                document.getElementById(`tab-${s}`).classList.toggle('active', s === mode);
+            });
+            if(mode === 'factor') updateFactorVisuals();
+        }
+
+        function updateFactorVisuals() {
+            const a = parseInt(document.getElementById('inputA').value) || 12;
+            const factors = getFactors(a);
+            const grid = document.getElementById('factorMatrixGrid'); grid.innerHTML = '';
+            factors.forEach(f => {
+                const w = a/f; const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-3xl border-2 border-gray-50 flex flex-col items-center shadow-sm";
+                card.innerHTML = `<div class="font-black text-emerald-600 mb-4">${f} × ${w}</div><div class="grid gap-1" style="grid-template-columns: repeat(${w}, 16px)">${Array(a).fill(0).map(()=>`<div class="cell bg-emerald-400"></div>`).join('')}</div>`;
+                grid.appendChild(card);
+            });
+            const svg = document.getElementById('rainbowSvg'); const labels = document.getElementById('rainbowLabels');
+            svg.innerHTML = ''; labels.innerHTML = '';
+            const step = (800 - 120) / (factors.length - 1 || 1);
+            factors.forEach((f, i) => {
+                const span = document.createElement('span'); span.className = "text-xl font-black text-indigo-700 w-12 text-center"; span.innerText = f; labels.appendChild(span);
+                const pairIdx = factors.indexOf(a/f);
+                if(pairIdx > i) {
+                    const x1 = 60 + i*step, x2 = 60 + pairIdx*step, h = Math.min(220, (pairIdx - i) * 35 + 50);
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    path.setAttribute("d", `M ${x1} 300 Q ${(x1+x2)/2} ${300-h} ${x2} 300`);
+                    path.setAttribute("class", "factor-arc"); path.setAttribute("stroke", `hsl(${(i*360/factors.length)}, 70%, 55%)`); svg.appendChild(path);
+                }
+            });
+        }
+
+        function updateMultipleVisuals() {
+            const a = parseInt(document.getElementById('mNumA').value), b = parseInt(document.getElementById('mNumB').value);
+            const draw = (id, num, color, label) => {
+                const container = document.getElementById(id); container.innerHTML = `<div class="font-bold mb-4">${label}</div><div class="flex gap-2 overflow-x-auto pb-4">`;
+                for(let i=1; i<=50; i++) {
+                    const isM = i % num === 0, isC = (i%a===0 && i%b===0);
+                    const dot = document.createElement('div');
+                    dot.className = `multiple-dot flex-shrink-0 ${isM ? color+' text-white' : 'bg-gray-100 text-gray-300'} ${isC ? 'ring-4 ring-yellow-400' : ''}`;
+                    dot.innerText = i; container.lastChild.appendChild(dot);
+                }
+            };
+            draw('track1', a, 'bg-blue-500', '數字 A'); draw('track2', b, 'bg-rose-500', '數字 B');
+        }
+
+        // --- 測驗核心更新 ---
+        let currentQType = '', quizStep = 1, correctAnswers = [];
+        const jokes = ["π 說：『認清現實吧！』，i 說：『理智一點！』", "為什麼 6 害怕 7？因為 7 8 9！", "零跟八說：你的腰帶勒得真緊。"];
+
+        function startQuiz(type) {
+            currentQType = type; quizStep = 1;
+            document.getElementById('quizPanel').classList.remove('hidden-section');
+            nextQ();
+        }
+
+        function nextQ() {
+            if(quizStep > 10) {
+                document.getElementById('jokeText').innerText = jokes[Math.floor(Math.random()*jokes.length)];
+                document.getElementById('jokeModal').classList.remove('hidden'); return;
+            }
+            document.getElementById('quizProgress').innerText = `Question ${quizStep} / 10`;
+            const container = document.getElementById('inputContainer'); container.innerHTML = '';
+            
+            let n1 = Math.floor(Math.random()*30)+12, n2 = Math.floor(Math.random()*30)+12;
+            if(currentQType === 'factor') {
+                document.getElementById('quizQuestion').innerText = `請寫出 ${n1} 的所有正因數`;
+                correctAnswers = getFactors(n1);
+            } else if(currentQType === 'commonFactor') {
+                document.getElementById('quizQuestion').innerText = `請寫出 ${n1} 和 ${n2} 的所有公因數`;
+                const f1 = getFactors(n1), f2 = getFactors(n2);
+                correctAnswers = f1.filter(x => f2.includes(x));
+            } else {
+                let a = Math.floor(Math.random()*9)+3, b = Math.floor(Math.random()*9)+3;
+                document.getElementById('quizQuestion').innerText = `請找出 ${a} 和 ${b} 的最小公倍數`;
+                correctAnswers = [getLCM(a, b)];
+            }
+
+            // 根據答案個數產生空格
+            correctAnswers.forEach((_, idx) => {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'quiz-input-box';
+                input.dataset.index = idx;
+                // 自動跳下一格邏輯
+                input.onkeyup = (e) => {
+                    if(e.value !== "" && (e.key === " " || e.key === "Enter")) {
+                        const next = container.querySelectorAll('.quiz-input-box')[idx + 1];
+                        if(next) next.focus();
+                    }
+                };
+                container.appendChild(input);
+            });
+            container.firstChild.focus();
+        }
+
+        function checkAnswer() {
+            const inputs = document.querySelectorAll('.quiz-input-box');
+            const userAnswers = Array.from(inputs).map(i => parseInt(i.value)).filter(v => !isNaN(v));
+            
+            // 無序驗證邏輯
+            const userSorted = [...userAnswers].sort((a,b) => a-b);
+            const correctSorted = [...correctAnswers].sort((a,b) => a-b);
+
+            if (userAnswers.length === correctAnswers.length && JSON.stringify(userSorted) === JSON.stringify(correctSorted)) {
+                alert('🎉 答對了！全對！');
+                quizStep++; nextQ();
+            } else {
+                alert(`❌ 還差一點喔！\n你的答案：${userAnswers.join(', ')}\n正確答案是：${correctAnswers.join(', ')} (共 ${correctAnswers.length} 個)`);
+                // 不自動跳下一題，讓學生在原題修改，或者你也可以選擇像原本一樣跳題
+                // quizStep++; nextQ(); 
+            }
+        }
+
+        window.onload = updateFactorVisuals;
+    </script>
+</body>
+</html>
